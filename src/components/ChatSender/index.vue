@@ -4,6 +4,7 @@ import type { FilesCardProps } from 'vue-element-plus-x/types/FilesCard';
 import { nextTick, ref, watch } from 'vue';
 import { Sender } from 'vue-element-plus-x';
 import AgentSelect from '@/components/AgentSelect/index.vue';
+import DeepThinking from '@/components/DeepThinking/index.vue';
 import FilesSelect from '@/components/FilesSelect/index.vue';
 import ModelSelect from '@/components/ModelSelect/index.vue';
 import { useAgentStore } from '@/stores/modules/agent';
@@ -139,7 +140,10 @@ defineExpose({
         <!-- 左侧按钮组 -->
         <div class="left-buttons">
           <AgentSelect v-if="isApplicationMode" />
-          <ModelSelect v-else />
+          <template v-else>
+            <ModelSelect />
+            <DeepThinking />
+          </template>
         </div>
 
         <!-- 右侧上传按钮 -->

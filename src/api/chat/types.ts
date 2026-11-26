@@ -273,6 +273,10 @@ export interface ChatMessageVo {
    */
   remark?: string;
   /**
+   * 思维链（深度思考模式下由后端独立字段返回）
+   */
+  thinking?: string;
+  /**
    * 对话角色
    */
   role?: string;

@@ -167,6 +167,8 @@ async function startSSE(chatContent: string) {
       agentId: agentStore.currentAgentInfo?.id || undefined,
       content: lastUserMessage?.content ?? '',
       sessionId: route.params?.id !== 'not_login' ? String(route.params?.id) : undefined,
+      // 仅普通模型对话支持深度思考：工作流与智能体由各自运行时接管，不走流式思维链协议
+      enableThinking: !currentBinding.value && !agentStore.currentAgentInfo?.id && chatStore.isDeepThinking,
     };
 
     // 绑定了工作流：仅发送工作流参数，三种对话模式保持互斥
@@ -278,35 +280,30 @@ function handleDataChunk(chunk: AnyObject | string): boolean {
         return false;
       }
 
+      // 后端 SseEventDto.reasoning()：event: reasoning，data 中字段名 reasoningContent
+      if (eventType === 'reasoning' && dataObj) {
+        const reasoning = dataObj.reasoningContent || dataObj.reasoning_content || '';
+        if (reasoning) {
+          handleReasoningChunk(reasoning as string);
+        }
+        return false;
+      }
+
       if (dataObj && eventType === 'content') {
         const content = dataObj.content || '';
         if (content) {
           handleContentChunk(content);
         }
-        const reasoningContent = dataObj.reasoning_content || '';
+        const reasoningContent = dataObj.reasoningContent || dataObj.reasoning_content || '';
         if (reasoningContent) {
-          const lastMessage = bubbleItems.value[bubbleItems.value.length - 1];
-          if (lastMessage) {
-            lastMessage.thinkingStatus = 'thinking';
-            lastMessage.loading = true;
-            lastMessage.thinlCollapse = true;
-            lastMessage.reasoning_content += reasoningContent;
-            bubbleItems.value = [...bubbleItems.value];
-          }
+          handleReasoningChunk(reasoningContent as string);
         }
       }
     }
     else if (typeof chunk === 'object' && chunk !== null) {
       const reasoningChunk = chunk?.choices?.[0]?.delta?.reasoning_content;
       if (reasoningChunk) {
-        const lastMessage = bubbleItems.value[bubbleItems.value.length - 1];
-        if (lastMessage) {
-          lastMessage.thinkingStatus = 'thinking';
-          lastMessage.loading = true;
-          lastMessage.thinlCollapse = true;
-          lastMessage.reasoning_content += reasoningChunk;
-          bubbleItems.value = [...bubbleItems.value];
-        }
+        handleReasoningChunk(reasoningChunk as string);
       }
 
       const parsedChunk = chunk?.choices?.[0]?.delta?.content;
@@ -459,6 +456,20 @@ function handleMcpEvent(dataObj: AnyObject) {
   }
 }
 
+// 流式思维链内容（reasoning 事件 / reasoning_content 字段 / <think> 标签统一入口）
+function handleReasoningChunk(content: string) {
+  const lastMessage = bubbleItems.value[bubbleItems.value.length - 1];
+  if (!lastMessage) {
+    return;
+  }
+  lastMessage.thinkingStatus = 'thinking';
+  lastMessage.loading = true;
+  lastMessage.thinlCollapse = true;
+  lastMessage.reasoning_content = (lastMessage.reasoning_content || '') + content;
+  bubbleItems.value = [...bubbleItems.value];
+  bubbleListRef.value?.scrollToBottom();
+}
+
 function handleContentChunk(content: string) {
   const lastIndex = bubbleItems.value.length - 1;
   const lastMessage = bubbleItems.value[lastIndex];
@@ -498,6 +509,11 @@ function handleContentChunk(content: string) {
       lastMessage.reasoning_content += currentText;
     }
     else {
+      // 正文开始输出意味着思维链阶段结束，折叠面板切到完成态
+      if (lastMessage.thinkingStatus === 'thinking') {
+        lastMessage.thinkingStatus = 'end';
+        lastMessage.loading = false;
+      }
       lastMessage.content += currentText;
     }
   }

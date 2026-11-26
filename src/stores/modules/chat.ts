@@ -60,8 +60,10 @@ export const useChatStore = defineStore('chat', () => {
       const isUser = item.role === 'user';
       const originalContent = item.content as string;
 
-      const thinkContent = extractThkContent(originalContent);
-      const afterThinkContent = extractThkContentAfter(originalContent);
+      // 优先使用后端独立字段 thinking；旧数据兜底从正文的 <think> 标签解析
+      const hasThinkingField = typeof item.thinking === 'string' && item.thinking.trim().length > 0;
+      const thinkContent = hasThinkingField ? item.thinking : extractThkContent(originalContent);
+      const afterThinkContent = hasThinkingField ? originalContent : extractThkContentAfter(originalContent);
 
       const result = {
         ...item,

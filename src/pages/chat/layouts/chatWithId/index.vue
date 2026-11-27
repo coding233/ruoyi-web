@@ -167,8 +167,9 @@ async function startSSE(chatContent: string) {
       agentId: agentStore.currentAgentInfo?.id || undefined,
       content: lastUserMessage?.content ?? '',
       sessionId: route.params?.id !== 'not_login' ? String(route.params?.id) : undefined,
-      // 仅普通模型对话支持深度思考：工作流与智能体由各自运行时接管，不走流式思维链协议
+      // 仅普通模型对话支持深度思考与联网搜索：工作流与智能体由各自运行时接管
       enableThinking: !currentBinding.value && !agentStore.currentAgentInfo?.id && chatStore.isDeepThinking,
+      webSearch: !currentBinding.value && !agentStore.currentAgentInfo?.id && chatStore.isWebSearch,
     };
 
     // 绑定了工作流：仅发送工作流参数，三种对话模式保持互斥

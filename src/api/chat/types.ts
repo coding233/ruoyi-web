@@ -115,6 +115,10 @@ export interface SendDTO {
    */
   enableThinking?: boolean;
   /**
+   * 是否启用联网搜索（服务端工具，由模型自主检索并附引用作答）
+   */
+  webSearch?: boolean;
+  /**
    * 是否支持联网
    */
   enableInternet?: boolean;

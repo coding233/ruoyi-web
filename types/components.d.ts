@@ -45,6 +45,7 @@ declare module 'vue' {
     RouterView: typeof import('vue-router')['RouterView']
     SvgIcon: typeof import('./../src/components/SvgIcon/index.vue')['default']
     VerificationCode: typeof import('./../src/components/LoginDialog/components/FormLogin/VerificationCode.vue')['default']
+    WebSearch: typeof import('./../src/components/WebSearch/index.vue')['default']
     WelecomeText: typeof import('./../src/components/WelecomeText/index.vue')['default']
     WorkflowIcon: typeof import('./../src/components/WorkflowIcon/index.vue')['default']
   }

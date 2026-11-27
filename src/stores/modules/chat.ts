@@ -33,6 +33,13 @@ export const useChatStore = defineStore('chat', () => {
     isDeepThinking.value = value;
   };
 
+  // 是否开启联网搜索
+  const isWebSearch = ref<boolean>(false);
+
+  const setWebSearch = (value: boolean) => {
+    isWebSearch.value = value;
+  };
+
   // 知识库ID
   const knowledgeId = ref<string>('');
 
@@ -135,6 +142,8 @@ export const useChatStore = defineStore('chat', () => {
     requestChatList,
     isDeepThinking,
     setDeepThinking,
+    isWebSearch,
+    setWebSearch,
     knowledgeId,
     setKnowledgeId,
     currentWorkflow,

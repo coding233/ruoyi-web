@@ -7,6 +7,7 @@ import AgentSelect from '@/components/AgentSelect/index.vue';
 import DeepThinking from '@/components/DeepThinking/index.vue';
 import FilesSelect from '@/components/FilesSelect/index.vue';
 import ModelSelect from '@/components/ModelSelect/index.vue';
+import WebSearch from '@/components/WebSearch/index.vue';
 import { useAgentStore } from '@/stores/modules/agent';
 import { useChatStore } from '@/stores/modules/chat';
 import { useFilesStore } from '@/stores/modules/files';
@@ -143,6 +144,7 @@ defineExpose({
           <template v-else>
             <ModelSelect />
             <DeepThinking />
+            <WebSearch />
           </template>
         </div>
 

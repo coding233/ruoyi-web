@@ -13,6 +13,7 @@ import { send } from '@/api';
 import ChatSender from '@/components/ChatSender/index.vue';
 import { useAgentStore } from '@/stores/modules/agent';
 import { useChatStore } from '@/stores/modules/chat';
+import { useFilesStore } from '@/stores/modules/files';
 import { useModelStore } from '@/stores/modules/model';
 import { useUserStore } from '@/stores/modules/user';
 import { codeXRender } from '@/utils/markdownRenderers';
@@ -36,6 +37,9 @@ const chatStore = useChatStore();
 const modelStore = useModelStore();
 const agentStore = useAgentStore();
 const userStore = useUserStore();
+const filesStore = useFilesStore();
+// 首页发送时通过 localStorage 转交的附件 file_id
+let pendingFileIds: string[] = [];
 
 // 用户头像
 const avatar = computed(() => {
@@ -117,6 +121,16 @@ watch(
       // 如果本地有发送内容 ，则直接发送
       const v = localStorage.getItem('chatContent');
       if (v) {
+        const savedFileIds = localStorage.getItem('chatFileIds');
+        if (savedFileIds) {
+          try {
+            pendingFileIds = JSON.parse(savedFileIds) as string[];
+          }
+          catch {
+            pendingFileIds = [];
+          }
+          localStorage.removeItem('chatFileIds');
+        }
         // 发送消息
         setTimeout(() => {
           startSSE(v);
@@ -161,16 +175,27 @@ async function startSSE(chatContent: string) {
     // 标记是否收到第一个有效数据 chunk（用于清除 loading 状态）
     let hasReceivedFirstContent = false;
 
+    // 附件 file_id：文件在选中时已上传并解析完成
+    const attachedFileIds = [...pendingFileIds, ...filesStore.fileIds].slice(0, 20);
+    pendingFileIds = [];
+    const normalChatMode = !currentBinding.value && !agentStore.currentAgentInfo?.id;
+    if (!normalChatMode && attachedFileIds.length > 0) {
+      ElMessage.warning('文件解析仅支持普通模型对话，本次附件不会发送给模型');
+    }
+
     // 构造发送请求体
     const payload: SendDTO = {
       model: modelStore.currentModelInfo.modelName ?? '',
       agentId: agentStore.currentAgentInfo?.id || undefined,
       content: lastUserMessage?.content ?? '',
       sessionId: route.params?.id !== 'not_login' ? String(route.params?.id) : undefined,
+      fileIds: normalChatMode && attachedFileIds.length > 0 ? attachedFileIds : undefined,
       // 仅普通模型对话支持深度思考与联网搜索：工作流与智能体由各自运行时接管
       enableThinking: !currentBinding.value && !agentStore.currentAgentInfo?.id && chatStore.isDeepThinking,
       webSearch: !currentBinding.value && !agentStore.currentAgentInfo?.id && chatStore.isWebSearch,
     };
+    // 随消息一起消费掉附件，避免文件卡片跨消息残留
+    filesStore.clearFiles();
 
     // 绑定了工作流：仅发送工作流参数，三种对话模式保持互斥
     if (currentBinding.value) {

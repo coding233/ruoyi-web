@@ -71,6 +71,16 @@ export interface SseEventData {
 }
 
 /**
+ * 文件上传解析结果（POST /chat/file/upload）
+ */
+export interface ChatFileUploadVo {
+  fileId: string;
+  filename: string;
+  bytes: number;
+  purpose: string;
+}
+
+/**
  * ChatRequest，描述：对话请求对象
  */
 export interface SendDTO {
@@ -86,6 +96,10 @@ export interface SendDTO {
    * 对话消息（必填）
    */
   content: string;
+  /**
+   * 附件 file_id 列表，来自 /chat/file/upload。模型会以文件内容作为上下文作答，最多 20 个。
+   */
+  fileIds?: string[];
   /**
    * 工作流请求体
    */

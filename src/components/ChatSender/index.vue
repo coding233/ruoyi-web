@@ -1,6 +1,7 @@
 <!-- 公共聊天输入框组件 -->
 <script setup lang="ts">
 import type { FilesCardProps } from 'vue-element-plus-x/types/FilesCard';
+import { ElMessage } from 'element-plus';
 import { nextTick, ref, watch } from 'vue';
 import { Sender } from 'vue-element-plus-x';
 import AgentSelect from '@/components/AgentSelect/index.vue';
@@ -43,6 +44,10 @@ const senderRef = ref<InstanceType<typeof Sender> | null>(null);
 function handleSubmit() {
   if (!isLoggedIn.value) {
     userStore.ensureLogin('/chat', '登录后即可开始对话');
+    return;
+  }
+  if (filesStore.uploadingCount > 0) {
+    ElMessage.warning('文件正在解析中，请稍候再发送');
     return;
   }
 

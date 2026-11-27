@@ -4,16 +4,23 @@ import { ref } from 'vue';
 import ChatSender from '@/components/ChatSender/index.vue';
 import WelecomeText from '@/components/WelecomeText/index.vue';
 import { useUserStore } from '@/stores';
+import { useFilesStore } from '@/stores/modules/files';
 import { useSessionStore } from '@/stores/modules/session';
 
 const userStore = useUserStore();
 const sessionStore = useSessionStore();
+const filesStore = useFilesStore();
 
 const senderValue = ref('');
 const senderRef = ref<InstanceType<typeof ChatSender> | null>(null);
 
 async function handleSubmit(content: string) {
   localStorage.setItem('chatContent', content);
+  const attachedFileIds = filesStore.fileIds.slice(0, 20);
+  if (attachedFileIds.length > 0) {
+    localStorage.setItem('chatFileIds', JSON.stringify(attachedFileIds));
+  }
+  filesStore.clearFiles();
 
   senderValue.value = '';
   await sessionStore.createSessionList({

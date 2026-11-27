@@ -1,16 +1,16 @@
 <!-- 文件上传 -->
 <script setup lang="ts">
-import type { FilesCardProps } from 'vue-element-plus-x/types/FilesCard';
+import type { ChatFileItem } from '@/stores/modules/files';
 import { useFileDialog } from '@vueuse/core';
 import { ElMessage } from 'element-plus';
+import { uploadChatFile } from '@/api/chat';
 import Popover from '@/components/Popover/index.vue';
 import { useFilesStore } from '@/stores/modules/files';
-
-type FilesList = FilesCardProps & {
-  file: File;
-};
+import { useModelStore } from '@/stores/modules/model';
 
 const filesStore = useFilesStore();
+const modelStore = useModelStore();
+const MAX_FILES = 20;
 
 /* 弹出面板 开始 */
 const popoverStyle = ref({
@@ -31,28 +31,60 @@ const { reset, open, onChange } = useFileDialog({
   multiple: true, // 是否允许多选
 });
 
-onChange((files) => {
-  if (!files)
+onChange(async (files) => {
+  if (!files || files.length === 0)
     return;
-  console.log('files', files);
-  const arr = [] as FilesList[];
-  for (let i = 0; i < files!.length; i++) {
-    const file = files![i];
-    arr.push({
-      uid: crypto.randomUUID(), // 不写 uid，文件列表展示不出来，elx 1.2.0 bug 待修复
-      name: file.name,
-      fileSize: file.size,
-      file,
-      maxWidth: '200px',
-      showDelIcon: true, // 显示删除图标
-      imgPreview: true, // 显示图片预览
-      imgVariant: 'square', // 图片预览的形状
-      url: URL.createObjectURL(file), // 图片预览地址
-    });
+
+  const modelName = modelStore.currentModelInfo?.modelName;
+  if (!modelName) {
+    ElMessage.warning('请先选择模型后再上传文件');
+    reset();
+    return;
   }
+  if (modelStore.currentModelInfo?.providerCode?.toLowerCase() !== 'deepseek') {
+    ElMessage.warning('文件解析目前仅支持 DeepSeek 模型，请切换模型后再上传');
+    reset();
+    return;
+  }
+  if (filesStore.filesList.length + files.length > MAX_FILES) {
+    ElMessage.warning(`单次对话最多引用 ${MAX_FILES} 个文档`);
+    reset();
+    return;
+  }
+
+  const selectedFiles = Array.from(files);
+  const arr: ChatFileItem[] = selectedFiles.map(file => ({
+    uid: crypto.randomUUID(), // 不写 uid，文件列表展示不出来，elx 1.2.0 bug 待修复
+    name: file.name,
+    fileSize: file.size,
+    file,
+    maxWidth: '200px',
+    showDelIcon: true, // 显示删除图标
+    imgPreview: true, // 显示图片预览
+    imgVariant: 'square', // 图片预览的形状
+    url: URL.createObjectURL(file), // 图片预览地址
+    status: 'uploading',
+  }));
   filesStore.setFilesList([...filesStore.filesList, ...arr]);
+  filesStore.uploadingCount += selectedFiles.length;
   // 重置文件选择器
   nextTick(() => reset());
+
+  // 上传到 DeepSeek Files API，解析完成后才能拿到 file_id
+  await Promise.all(selectedFiles.map(async (file, index) => {
+    const uid = String(arr[index].uid);
+    try {
+      const result = await uploadChatFile(file, modelName);
+      filesStore.markUploaded(uid, result.fileId);
+    }
+    catch (error: any) {
+      filesStore.markUploadFailed(uid, error?.message || '解析失败');
+      ElMessage.error(`${file.name} 解析失败：${error?.message || '未知错误'}`);
+    }
+    finally {
+      filesStore.uploadingCount--;
+    }
+  }));
 });
 
 function handleUploadFiles() {
